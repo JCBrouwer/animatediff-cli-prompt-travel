@@ -22,6 +22,7 @@ from diffusers.utils import (BaseOutput, deprecate, is_accelerate_available,
                              randn_tensor)
 from einops import rearrange
 from packaging import version
+from PIL import Image
 from tqdm.rich import tqdm
 from transformers import CLIPImageProcessor, CLIPTokenizer
 
@@ -225,7 +226,6 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
     def _encode_prompt(
         self,
         prompt,
-        device,
         num_videos_per_prompt: int = 1,
         do_classifier_free_guidance: bool = False,
         negative_prompt=None,
@@ -240,8 +240,6 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         Args:
             prompt (`str` or `list(int)`):
                 prompt to be encoded
-            device: (`torch.device`):
-                torch device
             num_videos_per_prompt (`int`):
                 number of videos that should be generated per prompt
             do_classifier_free_guidance (`bool`):
@@ -613,6 +611,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         controlnet_max_samples_on_vram: int = 999,
         controlnet_max_models_on_vram: int=99,
         controlnet_is_loop: bool=True,
+        image_map: Dict[int, Dict[str,Any]] = {},
         **kwargs,
     ):
         controlnet_image_map_org = controlnet_image_map
@@ -646,26 +645,25 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
         # corresponds to doing no classifier free guidance.
         do_classifier_free_guidance = guidance_scale > 1.0
 
-        # 3. Encode input prompt
+        # 3. Encode input prompts
         text_encoder_lora_scale = (
             cross_attention_kwargs.get("scale", None) if cross_attention_kwargs is not None else None
         )
 
+        # 3.1 Encode text prompts
         prompt_embeds_map = {}
         prompt_map = dict(sorted(prompt_map.items()))
-
-        prompt_list = [prompt_map[key_frame] for key_frame in prompt_map.keys()]
         prompt_embeds = self._encode_prompt(
-            prompt_list,
-            device,
+            list(prompt_map.values()),
             num_videos_per_prompt,
             do_classifier_free_guidance,
             negative_prompt,
-            prompt_embeds=None,
-            negative_prompt_embeds=None,
+            prompt_embeds=prompt_embeds,
+            negative_prompt_embeds=negative_prompt_embeds,
             clip_skip=clip_skip,
         )
 
+        # 3.1.2 Handle classifier free guidance
         if do_classifier_free_guidance:
             negative, positive = prompt_embeds.chunk(2, 0)
             negative = negative.chunk(negative.shape[0], 0)
@@ -674,25 +672,51 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             positive = prompt_embeds
             positive = positive.chunk(positive.shape[0], 0)
 
+        # 3.1.3 Prepare prompt embeds map
         for i, key_frame in enumerate(prompt_map):
             if do_classifier_free_guidance:
                 prompt_embeds_map[key_frame] = torch.cat([negative[i] , positive[i]])
             else:
                 prompt_embeds_map[key_frame] = positive[i]
 
-        key_first =list(prompt_map.keys())[0]
-        key_last =list(prompt_map.keys())[-1]
+        # 3.2 Encode image prompts
+        if len(image_map) > 0:
+            from .ip_adapter import IPAdapterPlus
 
-        def get_current_prompt_embeds(
-                context: List[int] = None,
-                video_length : int = 0
-                ):
-            center_frame = context[len(context)//2]
+            ipap = IPAdapterPlus(self, device=device)
 
-            key_prev = key_last
-            key_next = key_first
+            image_embeds_map = {}
+            image_map = dict(sorted(image_map.items()))
 
-            for p in prompt_map.keys():
+            im_positive, im_negative = ipap.get_image_embeds([Image.open(im) for im in image_map.values()])
+            bs_embed, seq_len, _ = im_positive.shape
+            im_positive = im_positive.repeat(1, num_videos_per_prompt, 1)
+            im_positive = im_positive.view(bs_embed * num_videos_per_prompt, seq_len, -1)
+
+            # 3.2.2 Prepare image embeds map
+            if do_classifier_free_guidance:
+                im_negative = im_negative.repeat(1, num_videos_per_prompt, 1)
+                im_negative = im_negative.view(bs_embed * num_videos_per_prompt, seq_len, -1)
+                
+                im_negative = im_negative.chunk(im_negative.shape[0], 0)
+                im_positive = im_positive.chunk(im_positive.shape[0], 0)
+            else:
+                im_positive = im_positive.chunk(im_positive.shape[0], 0)
+
+            # 3.2.3 Prepare image embeds map
+            for i, key_frame in enumerate(image_map):
+                if do_classifier_free_guidance:
+                    image_embeds_map[key_frame] = torch.cat([im_negative[i] , im_positive[i]])
+                else:
+                    image_embeds_map[key_frame] = im_positive[i]
+
+        # helper functions to get prompt embeddings for a given context
+
+        def get_prev_next_dists(keys, center_frame):
+            key_prev = list(keys)[-1]
+            key_next = list(keys)[0]
+
+            for p in keys:
                 if p > center_frame:
                     key_next = p
                     break
@@ -705,18 +729,32 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
             if dist_next < 0:
                 dist_next += video_length
 
-#            logger.info("center_frame="+ str(center_frame))
-#            logger.info("key_prev="+ str(key_prev))
-#            logger.info("key_next="+ str(key_next))
+            return key_prev, key_next, dist_prev, dist_next
+
+        def get_current_prompt_embeds(context: List[int] = None):
+            center_frame = context[len(context)//2]
+
+            key_prev, key_next, dist_prev, dist_next = get_prev_next_dists(prompt_map.keys(), center_frame)
 
             if key_prev == key_next or dist_prev + dist_next == 0:
-                return prompt_embeds_map[key_prev]
+                embeds = prompt_embeds_map[key_prev]
+            else:
+                rate = dist_prev / (dist_prev + dist_next)
+                embeds =  prompt_embeds_map[key_prev] * (1-rate) + prompt_embeds_map[key_next] * (rate)
 
-            rate = dist_prev / (dist_prev + dist_next)
+            if len(image_map) > 0:
 
-#            logger.info("rate="+ str(rate))
+                im_key_prev, im_key_next, im_dist_prev, im_dist_next = get_prev_next_dists(image_map.keys(), center_frame)
 
-            return prompt_embeds_map[key_prev] * (1-rate) + prompt_embeds_map[key_next] * (rate)
+                if im_key_prev == im_key_next or im_dist_prev + im_dist_next == 0:
+                    im_embeds = image_embeds_map[im_key_prev]
+                else:
+                    im_rate = im_dist_prev / (im_dist_prev + im_dist_next)
+                    im_embeds =  image_embeds_map[im_key_prev] * (1-im_rate) + image_embeds_map[im_key_next] * (im_rate)
+
+                embeds = torch.cat((embeds, im_embeds), dim=1)
+            
+            return embeds
 
         # 3.5 Prepare controlnet variables
 
@@ -870,7 +908,6 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                 controlnet_result={}
 
                 def get_controlnet_result(context: List[int] = None):
-                    #logger.info(f"get_controlnet_result called {context=}")
 
                     hit = False
                     for n in context:
@@ -905,15 +942,15 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                             cur_down = [ v.to(device = device, dtype=first_down[0].dtype) for v in val[0] ]
                             cur_mid =val[1].to(device = device, dtype=first_mid.dtype)
                             loc =  list(set(context) & set(controlnet_scale_map[result]["frames"]))
-                            scales = []
 
+                            scales = []
                             for o in loc:
                                 for j, f in enumerate(controlnet_scale_map[result]["frames"]):
                                     if o == f:
                                         scales.append(controlnet_scale_map[result]["scales"][j])
                                         break
-                            loc_index=[]
 
+                            loc_index=[]
                             for o in loc:
                                 for j, f in enumerate( context ):
                                     if o==f:
@@ -932,7 +969,6 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                     return _down_block_res_samples, _mid_block_res_samples
 
                 def process_controlnet( target_frames: List[int] = None ):
-                    #logger.info(f"process_controlnet called {target_frames=}")
                     nonlocal controlnet_result
 
                     controlnet_samples_on_vram = 0
@@ -982,7 +1018,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                                 .repeat(2 if do_classifier_free_guidance else 1, 1, 1, 1, 1)
                             )
                             control_model_input = self.scheduler.scale_model_input(latent_model_input, t)[:, :, 0]
-                            controlnet_prompt_embeds = get_current_prompt_embeds([frame_no], latents.shape[2])
+                            controlnet_prompt_embeds = get_current_prompt_embeds([frame_no])
 
                             down_samples, mid_sample = self.controlnet_map[type_str](
                                 control_model_input,
@@ -1006,10 +1042,9 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                         if org_device != device:
                             self.controlnet_map[type_str] = self.controlnet_map[type_str].to(device=org_device)
 
-                #logger.info(f"STEP start")
 
                 for context in context_scheduler(
-                    i, num_inference_steps, latents.shape[2], context_frames, context_stride, context_overlap
+                    i, num_inference_steps, video_length, context_frames, context_stride, context_overlap
                 ):
                     controlnet_target = list(range(context[0]-context_frames, context[0])) + context + list(range(context[-1]+1, context[-1]+1+context_frames))
                     controlnet_target = [f%video_length for f in controlnet_target]
@@ -1025,7 +1060,7 @@ class AnimationPipeline(DiffusionPipeline, TextualInversionLoaderMixin):
                     )
                     latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
-                    cur_prompt = get_current_prompt_embeds(context, latents.shape[2])
+                    cur_prompt = get_current_prompt_embeds(context)
 
                     down_block_res_samples,mid_block_res_sample = get_controlnet_result(context)
 

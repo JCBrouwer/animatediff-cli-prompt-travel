@@ -359,11 +359,6 @@ def generate(
                 seed = torch.seed()
             logger.info(f"Generation seed: {seed}")
 
-            prompt_map = {}
-            for k in model_config.prompt_map.keys():
-                if int(k) < length:
-                    prompt_map[int(k)]=model_config.prompt_map[k]
-
             output = run_inference(
                 pipeline=pipeline,
                 prompt="this is dummy string",
@@ -380,7 +375,8 @@ def generate(
                 context_overlap=overlap,
                 context_stride=stride,
                 clip_skip=model_config.clip_skip,
-                prompt_map=prompt_map,
+                prompt_map={int(k):v for k,v in model_config.prompt_map.items() if int(k) < length},
+                image_map={int(k):v for k,v in model_config.image_map.items() if int(k) < length},
                 controlnet_map=model_config.controlnet_map,
                 controlnet_image_map=controlnet_image_map,
                 controlnet_type_map=controlnet_type_map,
