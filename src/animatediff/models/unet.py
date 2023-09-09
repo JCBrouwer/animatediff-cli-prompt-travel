@@ -11,15 +11,20 @@ from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.models import ModelMixin
 from diffusers.models.attention_processor import AttentionProcessor
 from diffusers.models.embeddings import TimestepEmbedding, Timesteps
-from diffusers.utils import (SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME,
-                             BaseOutput, logging)
+from diffusers.utils import SAFETENSORS_WEIGHTS_NAME, WEIGHTS_NAME, BaseOutput, logging
 from safetensors.torch import load_file
 from torch import Tensor, nn
 
 from .resnet import InflatedConv3d
-from .unet_blocks import (CrossAttnDownBlock3D, CrossAttnUpBlock3D,
-                          DownBlock3D, UNetMidBlock3DCrossAttn, UpBlock3D,
-                          get_down_block, get_up_block)
+from .unet_blocks import (
+    CrossAttnDownBlock3D,
+    CrossAttnUpBlock3D,
+    DownBlock3D,
+    UNetMidBlock3DCrossAttn,
+    UpBlock3D,
+    get_down_block,
+    get_up_block,
+)
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -48,12 +53,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
             "DownBlock3D",
         ),
         mid_block_type: str = "UNetMidBlock3DCrossAttn",
-        up_block_types: Tuple[str] = (
-            "UpBlock3D",
-            "CrossAttnUpBlock3D",
-            "CrossAttnUpBlock3D",
-            "CrossAttnUpBlock3D",
-        ),
+        up_block_types: Tuple[str] = ("UpBlock3D", "CrossAttnUpBlock3D", "CrossAttnUpBlock3D", "CrossAttnUpBlock3D"),
         only_cross_attention: Union[bool, Tuple[bool]] = False,
         block_out_channels: Tuple[int] = (320, 640, 1280, 1280),
         layers_per_block: int = 2,
@@ -226,9 +226,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
             prev_output_channel = output_channel
 
         # out
-        self.conv_norm_out = nn.GroupNorm(
-            num_channels=block_out_channels[0], num_groups=norm_num_groups, eps=norm_eps
-        )
+        self.conv_norm_out = nn.GroupNorm(num_channels=block_out_channels[0], num_groups=norm_num_groups, eps=norm_eps)
         self.conv_act = nn.SiLU()
         self.conv_out = InflatedConv3d(block_out_channels[0], out_channels, kernel_size=3, padding=1)
 
@@ -454,7 +452,6 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
                 cross_attention_kwargs=cross_attention_kwargs,
             )
 
-
         if mid_block_additional_residual is not None:
             sample = sample + mid_block_additional_residual
 
@@ -525,12 +522,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
             "CrossAttnDownBlock3D",
             "DownBlock3D",
         ]
-        unet_config["up_block_types"] = [
-            "UpBlock3D",
-            "CrossAttnUpBlock3D",
-            "CrossAttnUpBlock3D",
-            "CrossAttnUpBlock3D",
-        ]
+        unet_config["up_block_types"] = ["UpBlock3D", "CrossAttnUpBlock3D", "CrossAttnUpBlock3D", "CrossAttnUpBlock3D"]
         unet_config["mid_block_type"] = "UNetMidBlock3DCrossAttn"
 
         model: nn.Module = cls.from_config(unet_config, **unet_additional_kwargs)
@@ -542,9 +534,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
 
         elif pretrained_model_path.joinpath(WEIGHTS_NAME).exists():
             logger.debug(f"loading weights from {pretrained_model_path} ...")
-            state_dict = torch.load(
-                pretrained_model_path.joinpath(WEIGHTS_NAME), map_location="cpu", weights_only=True
-            )
+            state_dict = torch.load(pretrained_model_path.joinpath(WEIGHTS_NAME), map_location="cpu", weights_only=True)
         else:
             raise FileNotFoundError(f"no weights file found in {pretrained_model_path}")
 
@@ -555,9 +545,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
             elif motion_module_path.suffix.lower() == ".safetensors":
                 motion_state_dict = load_file(motion_module_path, device="cpu")
             else:
-                raise RuntimeError(
-                    f"unknown file format for motion module weights: {motion_module_path.suffix}"
-                )
+                raise RuntimeError(f"unknown file format for motion module weights: {motion_module_path.suffix}")
         else:
             raise FileNotFoundError(f"no motion module weights found in {motion_module_path}")
 
@@ -583,9 +571,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
         # set recursively
         processors = {}
 
-        def fn_recursive_add_processors(
-            name: str, module: torch.nn.Module, processors: Dict[str, AttentionProcessor]
-        ):
+        def fn_recursive_add_processors(name: str, module: torch.nn.Module, processors: Dict[str, AttentionProcessor]):
             if hasattr(module, "set_processor"):
                 processors[f"{name}.processor"] = module.processor
 

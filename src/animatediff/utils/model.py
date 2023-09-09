@@ -47,18 +47,14 @@ def get_base_model(model_name_or_path: str, local_dir: Path, force: bool = False
 
 
 def checkpoint_to_pipeline(
-    checkpoint: Path,
-    target_dir: Optional[Path] = None,
-    save: bool = True,
+    checkpoint: Path, target_dir: Optional[Path] = None, save: bool = True
 ) -> StableDiffusionPipeline:
     logger.debug(f"Converting checkpoint {path_from_cwd(checkpoint)}")
     if target_dir is None:
         target_dir = pipeline_dir.joinpath(checkpoint.stem)
 
     pipeline = StableDiffusionPipeline.from_single_file(
-        pretrained_model_link_or_path=str(checkpoint.absolute()),
-        local_files_only=True,
-        load_safety_checker=False,
+        pretrained_model_link_or_path=str(checkpoint.absolute()), local_files_only=True, load_safety_checker=False
     )
     target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -77,11 +73,7 @@ def get_checkpoint_weights(checkpoint: Path):
     return unet_state_dict, tenc_state_dict, vae_state_dict
 
 
-def ensure_motion_modules(
-    repo_id: str = HF_MODULE_REPO,
-    fp16: bool = False,
-    force: bool = False,
-):
+def ensure_motion_modules(repo_id: str = HF_MODULE_REPO, fp16: bool = False, force: bool = False):
     """Retrieve the motion modules from HuggingFace Hub."""
     module_files = ["mm_sd_v14.safetensors", "mm_sd_v15.safetensors"]
     module_dir = get_dir("data/models/motion-module")

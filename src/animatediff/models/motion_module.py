@@ -25,10 +25,7 @@ class TemporalTransformer3DModelOutput(BaseOutput):
 
 def get_motion_module(in_channels, motion_module_type: str, motion_module_kwargs: dict):
     if motion_module_type == "Vanilla":
-        return VanillaTemporalModule(
-            in_channels=in_channels,
-            **motion_module_kwargs,
-        )
+        return VanillaTemporalModule(in_channels=in_channels, **motion_module_kwargs)
     else:
         raise ValueError
 
@@ -78,10 +75,7 @@ class TemporalTransformer3DModel(nn.Module):
         num_attention_heads,
         attention_head_dim,
         num_layers,
-        attention_block_types=(
-            "Temporal_Self",
-            "Temporal_Self",
-        ),
+        attention_block_types=("Temporal_Self", "Temporal_Self"),
         dropout=0.0,
         norm_num_groups=32,
         cross_attention_dim=768,
@@ -96,9 +90,7 @@ class TemporalTransformer3DModel(nn.Module):
 
         inner_dim = num_attention_heads * attention_head_dim
 
-        self.norm = torch.nn.GroupNorm(
-            num_groups=norm_num_groups, num_channels=in_channels, eps=1e-6, affine=True
-        )
+        self.norm = torch.nn.GroupNorm(num_groups=norm_num_groups, num_channels=in_channels, eps=1e-6, affine=True)
         self.proj_in = nn.Linear(in_channels, inner_dim)
 
         self.transformer_blocks = nn.ModuleList(
@@ -129,9 +121,7 @@ class TemporalTransformer3DModel(nn.Module):
         encoder_hidden_states: Optional[Tensor] = None,
         attention_mask: Optional[Tensor] = None,
     ):
-        assert (
-            hidden_states.dim() == 5
-        ), f"Expected hidden_states to have ndim=5, but got ndim={hidden_states.dim()}."
+        assert hidden_states.dim() == 5, f"Expected hidden_states to have ndim=5, but got ndim={hidden_states.dim()}."
         video_length = hidden_states.shape[2]
         hidden_states = rearrange(hidden_states, "b c f h w -> (b f) c h w")
 
@@ -145,15 +135,11 @@ class TemporalTransformer3DModel(nn.Module):
 
         # Transformer Blocks
         for block in self.transformer_blocks:
-            hidden_states = block(
-                hidden_states, encoder_hidden_states=encoder_hidden_states, video_length=video_length
-            )
+            hidden_states = block(hidden_states, encoder_hidden_states=encoder_hidden_states, video_length=video_length)
 
         # output
         hidden_states = self.proj_out(hidden_states)
-        hidden_states = (
-            hidden_states.reshape(batch, height, weight, inner_dim).permute(0, 3, 1, 2).contiguous()
-        )
+        hidden_states = hidden_states.reshape(batch, height, weight, inner_dim).permute(0, 3, 1, 2).contiguous()
 
         output = hidden_states + residual
         output = rearrange(output, "(b f) c h w -> b c f h w", f=video_length)
@@ -168,10 +154,7 @@ class TemporalTransformerBlock(nn.Module):
         dim: int,
         num_attention_heads: int,
         attention_head_dim: int,
-        attention_block_types=(
-            "Temporal_Self",
-            "Temporal_Self",
-        ),
+        attention_block_types=("Temporal_Self", "Temporal_Self"),
         dropout=0.0,
         norm_num_groups: int = 32,
         cross_attention_dim: int = 768,
@@ -217,9 +200,7 @@ class TemporalTransformerBlock(nn.Module):
             hidden_states = (
                 attention_block(
                     norm_hidden_states,
-                    encoder_hidden_states=encoder_hidden_states
-                    if attention_block.is_cross_attention
-                    else None,
+                    encoder_hidden_states=encoder_hidden_states if attention_block.is_cross_attention else None,
                     video_length=video_length,
                 )
                 + hidden_states
@@ -274,9 +255,7 @@ class VersatileAttention(Attention):
     def extra_repr(self):
         return f"(Module Info) Attention_Mode: {self.attention_mode}, Is_Cross_Attention: {self.is_cross_attention}"
 
-    def forward(
-        self, hidden_states: Tensor, encoder_hidden_states=None, attention_mask=None, video_length=None
-    ):
+    def forward(self, hidden_states: Tensor, encoder_hidden_states=None, attention_mask=None, video_length=None):
         if self.attention_mode == "Temporal":
             d = hidden_states.shape[1]
             hidden_states = rearrange(hidden_states, "(b f) d c -> (b d) f c", f=video_length)

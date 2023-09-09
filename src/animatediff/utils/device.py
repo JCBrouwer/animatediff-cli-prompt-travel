@@ -39,10 +39,7 @@ def supports_bfloat16(device: Union[str, torch.device]) -> bool:
 
 
 @lru_cache(maxsize=4)
-def maybe_bfloat16(
-    device: Union[str, torch.device],
-    fallback: torch.dtype = torch.float32,
-) -> torch.dtype:
+def maybe_bfloat16(device: Union[str, torch.device], fallback: torch.dtype = torch.float32) -> torch.dtype:
     """Returns torch.bfloat16 if available, otherwise the fallback dtype (default float32)"""
     device = torch.device(device)  # make sure device is a torch.device
     return torch.bfloat16 if supports_bfloat16(device) else fallback
@@ -61,8 +58,7 @@ def dtype_for_model(model: str, device: torch.device) -> torch.dtype:
 
 
 def get_model_dtypes(
-    device: Union[str, torch.device],
-    force_half_vae: bool = False,
+    device: Union[str, torch.device], force_half_vae: bool = False
 ) -> tuple[torch.dtype, torch.dtype, torch.dtype]:
     device = torch.device(device)  # make sure device is a torch.device
     unet_dtype = dtype_for_model("unet", device)

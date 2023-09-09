@@ -121,9 +121,7 @@ class FfmpegEncoder:
 
     @staticmethod
     def _interpolate(stream, out_fps: int) -> FilterNode:
-        return stream.filter(
-            "minterpolate", fps=out_fps, mi_mode="mci", mc_mode="aobmc", me_mode="bidir", vsbmc=1
-        )
+        return stream.filter("minterpolate", fps=out_fps, mi_mode="mci", mc_mode="aobmc", me_mode="bidir", vsbmc=1)
 
     def _encode_gif(self) -> tuple:
         stream: FilterNode = self.input
@@ -138,9 +136,7 @@ class FfmpegEncoder:
 
         # generate the palette, then use it to encode the GIF
         palette = split_stream[0].filter("palettegen")
-        stream = ffmpeg.filter([split_stream[1], palette], "paletteuse").output(
-            self._out_file, vcodec="gif", loop=0
-        )
+        stream = ffmpeg.filter([split_stream[1], palette], "paletteuse").output(self._out_file, vcodec="gif", loop=0)
         return stream.run()
 
     def _encode_webm(self) -> tuple:
@@ -148,9 +144,7 @@ class FfmpegEncoder:
         if self.in_fps != self.out_fps:
             stream = self._interpolate(stream, self.out_fps)
 
-        stream = stream.output(
-            self._out_file, pix_fmt="yuv420p", vcodec="libvpx-vp9", video_bitrate=0, crf=24
-        )
+        stream = stream.output(self._out_file, pix_fmt="yuv420p", vcodec="libvpx-vp9", video_bitrate=0, crf=24)
         return stream.run()
 
     def _encode_webp(self) -> tuple:
@@ -184,9 +178,7 @@ class FfmpegEncoder:
         stream: FilterNode = self.input
         if self.in_fps != self.out_fps:
             stream = self._interpolate(stream, self.out_fps)
-        stream = stream.output(
-            self._out_file, pix_fmt="yuv420p", vcodec="libx265", preset="medium", tune="animation"
-        )
+        stream = stream.output(self._out_file, pix_fmt="yuv420p", vcodec="libx265", preset="medium", tune="animation")
         return stream.run()
 
     def _encode_hevc(self) -> tuple:

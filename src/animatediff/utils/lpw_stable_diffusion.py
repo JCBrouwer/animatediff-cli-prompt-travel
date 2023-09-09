@@ -10,15 +10,18 @@ import torch
 from diffusers import DiffusionPipeline
 from diffusers.configuration_utils import FrozenDict
 from diffusers.image_processor import VaeImageProcessor
-from diffusers.loaders import (FromSingleFileMixin, LoraLoaderMixin,
-                               TextualInversionLoaderMixin)
+from diffusers.loaders import FromSingleFileMixin, LoraLoaderMixin, TextualInversionLoaderMixin
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
-from diffusers.pipelines.stable_diffusion import (
-    StableDiffusionPipelineOutput, StableDiffusionSafetyChecker)
+from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput, StableDiffusionSafetyChecker
 from diffusers.schedulers import KarrasDiffusionSchedulers
-from diffusers.utils import (PIL_INTERPOLATION, deprecate,
-                             is_accelerate_available, is_accelerate_version,
-                             logging, randn_tensor)
+from diffusers.utils import (
+    PIL_INTERPOLATION,
+    deprecate,
+    is_accelerate_available,
+    is_accelerate_version,
+    logging,
+    randn_tensor,
+)
 from packaging import version
 from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 
@@ -191,18 +194,20 @@ def pad_tokens_and_weights(tokens, weights, max_length, bos, eos, pad, no_boseos
 
     return tokens, weights
 
+
 def get_unweighted_text_embeddings(
     pipe: DiffusionPipeline,
     text_input: torch.Tensor,
     chunk_length: int,
     no_boseos_middle: Optional[bool] = True,
-    clip_skip: int = 1
+    clip_skip: int = 1,
 ):
     """
     When the length of tokens is a multiple of the capacity of the text encoder,
     it should be split into chunks and sent to the text encoder individually.
     """
     from ..models.clip import CLIPSkipTextModel
+
     max_embeddings_multiples = (text_input.shape[1] - 2) // (chunk_length - 2)
     if max_embeddings_multiples > 1:
         text_embeddings = []
@@ -247,7 +252,7 @@ def get_weighted_text_embeddings(
     no_boseos_middle: Optional[bool] = False,
     skip_parsing: Optional[bool] = False,
     skip_weighting: Optional[bool] = False,
-    clip_skip:int=1
+    clip_skip: int = 1,
 ):
     r"""
     Prompts can be assigned with local weights using brackets. For example,
@@ -293,8 +298,7 @@ def get_weighted_text_embeddings(
             if isinstance(uncond_prompt, str):
                 uncond_prompt = [uncond_prompt]
             uncond_tokens = [
-                token[1:-1]
-                for token in pipe.tokenizer(uncond_prompt, max_length=max_length, truncation=True).input_ids
+                token[1:-1] for token in pipe.tokenizer(uncond_prompt, max_length=max_length, truncation=True).input_ids
             ]
             uncond_weights = [[1.0] * len(token) for token in uncond_tokens]
 
@@ -304,8 +308,7 @@ def get_weighted_text_embeddings(
         max_length = max(max_length, max([len(token) for token in uncond_tokens]))
 
     max_embeddings_multiples = min(
-        max_embeddings_multiples,
-        (max_length - 1) // (pipe.tokenizer.model_max_length - 2) + 1,
+        max_embeddings_multiples, (max_length - 1) // (pipe.tokenizer.model_max_length - 2) + 1
     )
     max_embeddings_multiples = max(1, max_embeddings_multiples)
     max_length = (pipe.tokenizer.model_max_length - 2) * max_embeddings_multiples + 2
@@ -340,20 +343,12 @@ def get_weighted_text_embeddings(
 
     # get the embeddings
     text_embeddings = get_unweighted_text_embeddings(
-        pipe,
-        prompt_tokens,
-        pipe.tokenizer.model_max_length,
-        no_boseos_middle=no_boseos_middle,
-        clip_skip=clip_skip
+        pipe, prompt_tokens, pipe.tokenizer.model_max_length, no_boseos_middle=no_boseos_middle, clip_skip=clip_skip
     )
     prompt_weights = torch.tensor(prompt_weights, dtype=text_embeddings.dtype, device=text_embeddings.device)
     if uncond_prompt is not None:
         uncond_embeddings = get_unweighted_text_embeddings(
-            pipe,
-            uncond_tokens,
-            pipe.tokenizer.model_max_length,
-            no_boseos_middle=no_boseos_middle,
-            clip_skip=clip_skip
+            pipe, uncond_tokens, pipe.tokenizer.model_max_length, no_boseos_middle=no_boseos_middle, clip_skip=clip_skip
         )
         uncond_weights = torch.tensor(uncond_weights, dtype=uncond_embeddings.dtype, device=uncond_embeddings.device)
 
@@ -377,10 +372,10 @@ def get_weighted_text_embeddings(
 
 def lpw_encode_prompt(
     pipe: DiffusionPipeline,
-    prompt:str,
-    do_classifier_free_guidance:bool,
-    negative_prompt:Optional[str] = None,
-    max_embeddings_multiples:Optional[int] = 3,
+    prompt: str,
+    do_classifier_free_guidance: bool,
+    negative_prompt: Optional[str] = None,
+    max_embeddings_multiples: Optional[int] = 3,
 ):
     r"""
     Encodes the prompt into text encoder hidden states.
@@ -579,9 +574,7 @@ class StableDiffusionLongPromptWeightingPipeline(
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
 
         self.image_processor = VaeImageProcessor(vae_scale_factor=self.vae_scale_factor)
-        self.register_to_config(
-            requires_safety_checker=requires_safety_checker,
-        )
+        self.register_to_config(requires_safety_checker=requires_safety_checker)
 
     def enable_vae_slicing(self):
         r"""
@@ -787,8 +780,7 @@ class StableDiffusionLongPromptWeightingPipeline(
             callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0)
         ):
             raise ValueError(
-                f"`callback_steps` has to be a positive integer but is {callback_steps} of type"
-                f" {type(callback_steps)}."
+                f"`callback_steps` has to be a positive integer but is {callback_steps} of type {type(callback_steps)}."
             )
 
         if prompt is not None and prompt_embeds is not None:

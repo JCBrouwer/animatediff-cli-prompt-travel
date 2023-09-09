@@ -25,21 +25,23 @@ import torch
 import torch.nn.functional as F
 from diffusers.image_processor import VaeImageProcessor
 from diffusers.loaders import LoraLoaderMixin, TextualInversionLoaderMixin
-from diffusers.models import (AutoencoderKL, ControlNetModel,
-                              UNet2DConditionModel)
+from diffusers.models import AutoencoderKL, ControlNetModel, UNet2DConditionModel
 from diffusers.models.attention import BasicTransformerBlock
-from diffusers.models.unet_2d_blocks import (CrossAttnDownBlock2D,
-                                             CrossAttnUpBlock2D, DownBlock2D,
-                                             UpBlock2D)
+from diffusers.models.unet_2d_blocks import CrossAttnDownBlock2D, CrossAttnUpBlock2D, DownBlock2D, UpBlock2D
 from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput
-from diffusers.pipelines.stable_diffusion.safety_checker import \
-    StableDiffusionSafetyChecker
+from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
 from diffusers.schedulers import KarrasDiffusionSchedulers
-from diffusers.utils import (deprecate, is_accelerate_available,
-                             is_accelerate_version, is_compiled_module,
-                             logging, randn_tensor, replace_example_docstring)
+from diffusers.utils import (
+    deprecate,
+    is_accelerate_available,
+    is_accelerate_version,
+    is_compiled_module,
+    logging,
+    randn_tensor,
+    replace_example_docstring,
+)
 from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
@@ -121,13 +123,17 @@ def prepare_image(image):
 
     return image
 
+
 def torch_dfs(model: torch.nn.Module):
     result = [model]
     for child in model.children():
         result += torch_dfs(child)
     return result
 
-class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, TextualInversionLoaderMixin, LoraLoaderMixin):
+
+class StableDiffusionControlNetImg2ImgReferencePipeline(
+    DiffusionPipeline, TextualInversionLoaderMixin, LoraLoaderMixin
+):
     r"""
     Pipeline for text-to-image generation using Stable Diffusion with ControlNet guidance.
 
@@ -415,9 +421,7 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
             if untruncated_ids.shape[-1] >= text_input_ids.shape[-1] and not torch.equal(
                 text_input_ids, untruncated_ids
             ):
-                removed_text = self.tokenizer.batch_decode(
-                    untruncated_ids[:, self.tokenizer.model_max_length - 1 : -1]
-                )
+                removed_text = self.tokenizer.batch_decode(untruncated_ids[:, self.tokenizer.model_max_length - 1 : -1])
                 logger.warning(
                     "The following part of your input was truncated because CLIP can only handle sequences up to"
                     f" {self.tokenizer.model_max_length} tokens: {removed_text}"
@@ -428,10 +432,7 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
             else:
                 attention_mask = None
 
-            prompt_embeds = self.text_encoder(
-                text_input_ids.to(device),
-                attention_mask=attention_mask,
-            )
+            prompt_embeds = self.text_encoder(text_input_ids.to(device), attention_mask=attention_mask)
             prompt_embeds = prompt_embeds[0]
 
         prompt_embeds = prompt_embeds.to(dtype=self.text_encoder.dtype, device=device)
@@ -468,11 +469,7 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
 
             max_length = prompt_embeds.shape[1]
             uncond_input = self.tokenizer(
-                uncond_tokens,
-                padding="max_length",
-                max_length=max_length,
-                truncation=True,
-                return_tensors="pt",
+                uncond_tokens, padding="max_length", max_length=max_length, truncation=True, return_tensors="pt"
             )
 
             if hasattr(self.text_encoder.config, "use_attention_mask") and self.text_encoder.config.use_attention_mask:
@@ -480,10 +477,7 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
             else:
                 attention_mask = None
 
-            negative_prompt_embeds = self.text_encoder(
-                uncond_input.input_ids.to(device),
-                attention_mask=attention_mask,
-            )
+            negative_prompt_embeds = self.text_encoder(uncond_input.input_ids.to(device), attention_mask=attention_mask)
             negative_prompt_embeds = negative_prompt_embeds[0]
 
         if do_classifier_free_guidance:
@@ -520,8 +514,10 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.decode_latents
     def decode_latents(self, latents):
         warnings.warn(
-            "The decode_latents method is deprecated and will be removed in a future version. Please"
-            " use VaeImageProcessor instead",
+            (
+                "The decode_latents method is deprecated and will be removed in a future version. Please"
+                " use VaeImageProcessor instead"
+            ),
             FutureWarning,
         )
         latents = 1 / self.vae.config.scaling_factor * latents
@@ -563,8 +559,7 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
             callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0)
         ):
             raise ValueError(
-                f"`callback_steps` has to be a positive integer but is {callback_steps} of type"
-                f" {type(callback_steps)}."
+                f"`callback_steps` has to be a positive integer but is {callback_steps} of type {type(callback_steps)}."
             )
 
         if prompt is not None and prompt_embeds is not None:
@@ -626,7 +621,8 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
                 raise ValueError("A single batch of multiple conditionings are supported at the moment.")
             elif len(image) != len(self.controlnet.nets):
                 raise ValueError(
-                    f"For multiple controlnets: `image` must have the same length as the number of controlnets, but got {len(image)} images and {len(self.controlnet.nets)} ControlNets."
+                    "For multiple controlnets: `image` must have the same length as the number of controlnets, but got"
+                    f" {len(image)} images and {len(self.controlnet.nets)} ControlNets."
                 )
 
             for image_ in image:
@@ -654,8 +650,8 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
                 self.controlnet.nets
             ):
                 raise ValueError(
-                    "For multiple controlnets: When `controlnet_conditioning_scale` is specified as `list`, it must have"
-                    " the same length as the number of controlnets"
+                    "For multiple controlnets: When `controlnet_conditioning_scale` is specified as `list`, it must"
+                    " have the same length as the number of controlnets"
                 )
         else:
             assert False
@@ -678,7 +674,8 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
             and not image_is_np_list
         ):
             raise TypeError(
-                f"image must be passed and be one of PIL image, numpy array, torch tensor, list of PIL images, list of numpy arrays or list of torch tensors, but is {type(image)}"
+                "image must be passed and be one of PIL image, numpy array, torch tensor, list of PIL images, list of"
+                f" numpy arrays or list of torch tensors, but is {type(image)}"
             )
 
         if image_is_pil:
@@ -695,7 +692,8 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
 
         if image_batch_size != 1 and image_batch_size != prompt_batch_size:
             raise ValueError(
-                f"If image batch size is not 1, image batch size must be same as prompt batch size. image batch size: {image_batch_size}, prompt batch size: {prompt_batch_size}"
+                "If image batch size is not 1, image batch size must be same as prompt batch size. image batch size:"
+                f" {image_batch_size}, prompt batch size: {prompt_batch_size}"
             )
 
     # Copied from diffusers.pipelines.controlnet.pipeline_controlnet.StableDiffusionControlNetPipeline.prepare_image
@@ -1049,7 +1047,7 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
             batch_size=batch_size * num_images_per_prompt,
             num_images_per_prompt=num_images_per_prompt,
             device=device,
-            dtype=controlnet.dtype
+            dtype=controlnet.dtype,
         )
 
         # 6. Prepare timesteps
@@ -1059,13 +1057,7 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
 
         # 7. Prepare latent variables
         latents = self.prepare_latents(
-            image,
-            latent_timestep,
-            batch_size,
-            num_images_per_prompt,
-            prompt_embeds.dtype,
-            device,
-            generator,
+            image, latent_timestep, batch_size, num_images_per_prompt, prompt_embeds.dtype, device, generator
         )
 
         # 8. Prepare reference latent variables
@@ -1477,13 +1469,7 @@ class StableDiffusionControlNetImg2ImgReferencePipeline(DiffusionPipeline, Textu
                 noise = randn_tensor(
                     ref_image_latents.shape, generator=generator, device=device, dtype=ref_image_latents.dtype
                 )
-                ref_xt = self.scheduler.add_noise(
-                    ref_image_latents,
-                    noise,
-                    t.reshape(
-                        1,
-                    ),
-                )
+                ref_xt = self.scheduler.add_noise(ref_image_latents, noise, t.reshape(1))
                 ref_xt = self.scheduler.scale_model_input(ref_xt, t)
 
                 MODE = "write"

@@ -23,13 +23,7 @@ IGNORE_TF_FLAX = IGNORE_TF + IGNORE_FLAX
 
 class DownloadTqdm(tqdm):
     def __init__(self, *args, **kwargs):
-        kwargs.update(
-            {
-                "ncols": 100,
-                "dynamic_ncols": False,
-                "disable": None,
-            }
-        )
+        kwargs.update({"ncols": 100, "dynamic_ncols": False, "disable": None})
         super().__init__(*args, **kwargs)
 
 
@@ -43,9 +37,7 @@ def get_hf_file(
 ) -> Path:
     target_path = target_dir.joinpath(filename)
     if target_path.exists() and force is not True:
-        raise FileExistsError(
-            f"File {path_from_cwd(target_path)} already exists! Pass force=True to overwrite"
-        )
+        raise FileExistsError(f"File {path_from_cwd(target_path)} already exists! Pass force=True to overwrite")
 
     target_dir.mkdir(exist_ok=True, parents=True)
     save_path = hf_hub_download(
@@ -69,9 +61,7 @@ def get_hf_repo(
     force: bool = False,
 ) -> Path:
     if target_dir.exists() and force is not True:
-        raise FileExistsError(
-            f"Target dir {path_from_cwd(target_dir)} already exists! Pass force=True to overwrite"
-        )
+        raise FileExistsError(f"Target dir {path_from_cwd(target_dir)} already exists! Pass force=True to overwrite")
 
     target_dir.mkdir(exist_ok=True, parents=True)
     save_path = snapshot_download(
@@ -92,16 +82,12 @@ def get_hf_repo(
 
 
 def get_hf_pipeline(
-    repo_id: Path,
-    target_dir: Path,
-    save: bool = True,
-    force_download: bool = False,
+    repo_id: Path, target_dir: Path, save: bool = True, force_download: bool = False
 ) -> StableDiffusionPipeline:
     pipeline_exists = target_dir.joinpath("model_index.json").exists()
     if pipeline_exists and force_download is not True:
         pipeline = StableDiffusionPipeline.from_pretrained(
-            pretrained_model_name_or_path=target_dir,
-            local_files_only=True,
+            pretrained_model_name_or_path=target_dir, local_files_only=True
         )
     else:
         target_dir.mkdir(exist_ok=True, parents=True)

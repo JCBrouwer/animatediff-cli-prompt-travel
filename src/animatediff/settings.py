@@ -6,9 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
 from pydantic import BaseConfig, BaseSettings, Field
-from pydantic.env_settings import (EnvSettingsSource, InitSettingsSource,
-                                   SecretsSettingsSource,
-                                   SettingsSourceCallable)
+from pydantic.env_settings import EnvSettingsSource, InitSettingsSource, SecretsSettingsSource, SettingsSourceCallable
 
 from animatediff import get_dir
 from animatediff.schedulers import DiffusionScheduler
@@ -22,10 +20,7 @@ CKPT_EXTENSIONS = [".pt", ".ckpt", ".pth", ".safetensors"]
 class JsonSettingsSource:
     __slots__ = ["json_config_path"]
 
-    def __init__(
-        self,
-        json_config_path: Optional[Union[PathLike, list[PathLike]]] = list(),
-    ) -> None:
+    def __init__(self, json_config_path: Optional[Union[PathLike, list[PathLike]]] = list()) -> None:
         if isinstance(json_config_path, list):
             self.json_config_path = [Path(path) for path in json_config_path]
         else:
@@ -71,10 +66,7 @@ class JsonConfig(BaseConfig):
         json_settings = JsonSettingsSource(json_config_path=json_config_path)
 
         # return the new settings sources
-        return (
-            init_settings,
-            json_settings,
-        )
+        return (init_settings, json_settings)
 
 
 class InferenceConfig(BaseSettings):
@@ -86,9 +78,7 @@ class InferenceConfig(BaseSettings):
 
 
 @lru_cache(maxsize=2)
-def get_infer_config(
-    config_path: Path = get_dir("config").joinpath("inference/default.json"),
-) -> InferenceConfig:
+def get_infer_config(config_path: Path = get_dir("config").joinpath("inference/default.json")) -> InferenceConfig:
     settings = InferenceConfig(json_config_path=config_path)
     return settings
 
@@ -104,12 +94,12 @@ class ModelConfig(BaseSettings):
     guidance_scale: float = 7.5  # CFG scale to use
     clip_skip: int = 1  # skip the last N-1 layers of the CLIP text encoder
     n_prompt: list[str] = Field([])  # Anti-prompt(s) to use
-    prompt_map: Dict[str,str]= Field({})
-    image_map: Dict[str,Any]= Field({})
-    lora_map: Dict[str,float]= Field({})
-    controlnet_map: Dict[str,Any]= Field({})
-    upscale_config: Dict[str,Any]= Field({})
-    result: Dict[str,Any]= Field({})
+    prompt_map: Dict[Union[int, str], str] = Field({})
+    ip_adapter_map: Dict[str, Any] = Field({})
+    lora_map: Dict[str, float] = Field({})
+    controlnet_map: Dict[str, Any] = Field({})
+    upscale_config: Dict[str, Any] = Field({})
+    result: Dict[str, Any] = Field({})
 
     class Config(JsonConfig):
         json_config_path: Path

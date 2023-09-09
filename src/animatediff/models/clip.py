@@ -12,15 +12,12 @@ from transformers.models.clip.modeling_clip import (
 )
 from transformers.utils import add_start_docstrings_to_model_forward, replace_return_docstrings
 
-CLIP_SKIP_TEXT_INPUTS_DOCSTRING = (
-    CLIP_TEXT_INPUTS_DOCSTRING
-    + r"""
+CLIP_SKIP_TEXT_INPUTS_DOCSTRING = CLIP_TEXT_INPUTS_DOCSTRING + r"""
         clip_skip (`int`, *optional*, defaults to 1):
             Skip the final N layers of the CLIP text encoder. Some Diffusion models were trained
             using the hidden states from the 2nd-last layer of the CLIP text encoder (ie clip_skip=2),
             so we reproduce that behavior here for use with those models.
 """
-)
 
 
 class CLIPSkipTextTransformer(CLIPTextTransformer):
@@ -40,9 +37,7 @@ class CLIPSkipTextTransformer(CLIPTextTransformer):
         Returns:
 
         """
-        output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
-        )
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
@@ -58,9 +53,7 @@ class CLIPSkipTextTransformer(CLIPTextTransformer):
 
         # CLIP's text model uses causal mask, prepare it here.
         # https://github.com/openai/CLIP/blob/cfcffb90e69f37bf2ff1e988237a0fbe41f33c04/clip/model.py#L324
-        causal_attention_mask = _make_causal_mask(
-            input_shape, hidden_states.dtype, device=hidden_states.device
-        )
+        causal_attention_mask = _make_causal_mask(input_shape, hidden_states.dtype, device=hidden_states.device)
         # expand attention_mask
         if attention_mask is not None:
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]

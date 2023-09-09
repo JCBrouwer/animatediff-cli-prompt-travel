@@ -7,23 +7,17 @@ from typing import Annotated, Optional
 
 import torch
 import typer
-from diffusers.utils.logging import \
-    set_verbosity_error as set_diffusers_verbosity_error
+from diffusers.utils.logging import set_verbosity_error as set_diffusers_verbosity_error
 from rich.logging import RichHandler
 
 from animatediff import __version__, console, get_dir
-from animatediff.generate import (controlnet_preprocess, create_pipeline,
-                                  create_us_pipeline, run_inference,
-                                  run_upscale)
+from animatediff.generate import controlnet_preprocess, create_pipeline, create_us_pipeline, run_inference, run_upscale
 from animatediff.pipelines import AnimationPipeline, load_text_embeddings
-from animatediff.settings import (CKPT_EXTENSIONS, InferenceConfig,
-                                  ModelConfig, get_infer_config,
-                                  get_model_config)
+from animatediff.settings import CKPT_EXTENSIONS, InferenceConfig, ModelConfig, get_infer_config, get_model_config
 from animatediff.utils.civitai2config import generate_config_from_civitai_info
 from animatediff.utils.model import checkpoint_to_pipeline, get_base_model
 from animatediff.utils.pipeline import get_context_params, send_to_device
-from animatediff.utils.util import (path_from_cwd, save_frames, save_imgs,
-                                    save_video)
+from animatediff.utils.util import path_from_cwd, save_frames, save_imgs, save_video
 from animatediff.utils.wild_card import replace_wild_card
 
 cli: typer.Typer = typer.Typer(
@@ -39,26 +33,20 @@ pipeline_dir = data_dir.joinpath("models/huggingface")
 
 try:
     import google.colab
+
     IN_COLAB = True
 except:
     IN_COLAB = False
 
 if IN_COLAB:
     import sys
-    logging.basicConfig(
-        level=logging.INFO,
-        stream=sys.stdout,
-        format="%(message)s",
-        datefmt="%H:%M:%S",
-        force=True,
-    )
+
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(message)s", datefmt="%H:%M:%S", force=True)
 else:
     logging.basicConfig(
         level=logging.INFO,
         format="%(message)s",
-        handlers=[
-            RichHandler(console=console, rich_tracebacks=True),
-        ],
+        handlers=[RichHandler(console=console, rich_tracebacks=True)],
         datefmt="%H:%M:%S",
         force=True,
     )
@@ -111,35 +99,18 @@ def generate(
     ] = Path("config/prompts/01-ToonYou.json"),
     width: Annotated[
         int,
-        typer.Option(
-            "--width",
-            "-W",
-            min=64,
-            max=3840,
-            help="Width of generated frames",
-            rich_help_panel="Generation",
-        ),
+        typer.Option("--width", "-W", min=64, max=3840, help="Width of generated frames", rich_help_panel="Generation"),
     ] = 512,
     height: Annotated[
         int,
         typer.Option(
-            "--height",
-            "-H",
-            min=64,
-            max=2160,
-            help="Height of generated frames",
-            rich_help_panel="Generation",
+            "--height", "-H", min=64, max=2160, help="Height of generated frames", rich_help_panel="Generation"
         ),
     ] = 512,
     length: Annotated[
         int,
         typer.Option(
-            "--length",
-            "-L",
-            min=1,
-            max=9999,
-            help="Number of frames to generate",
-            rich_help_panel="Generation",
+            "--length", "-L", min=1, max=9999, help="Number of frames to generate", rich_help_panel="Generation"
         ),
     ] = 16,
     context: Annotated[
@@ -191,28 +162,18 @@ def generate(
         ),
     ] = 1,
     device: Annotated[
-        str,
-        typer.Option(
-            "--device", "-d", help="Device to run on (cpu, cuda, cuda:id)", rich_help_panel="Advanced"
-        ),
+        str, typer.Option("--device", "-d", help="Device to run on (cpu, cuda, cuda:id)", rich_help_panel="Advanced")
     ] = "cuda",
     use_xformers: Annotated[
         bool,
         typer.Option(
-            "--xformers",
-            "-x",
-            is_flag=True,
-            help="Use XFormers instead of SDP Attention",
-            rich_help_panel="Advanced",
+            "--xformers", "-x", is_flag=True, help="Use XFormers instead of SDP Attention", rich_help_panel="Advanced"
         ),
     ] = False,
     force_half_vae: Annotated[
         bool,
         typer.Option(
-            "--half-vae",
-            is_flag=True,
-            help="Force VAE to use fp16 (not recommended)",
-            rich_help_panel="Advanced",
+            "--half-vae", is_flag=True, help="Force VAE to use fp16 (not recommended)", rich_help_panel="Advanced"
         ),
     ] = False,
     out_dir: Annotated[
@@ -229,33 +190,18 @@ def generate(
     no_frames: Annotated[
         bool,
         typer.Option(
-            "--no-frames",
-            "-N",
-            is_flag=True,
-            help="Don't save frames, only the animation",
-            rich_help_panel="Output",
+            "--no-frames", "-N", is_flag=True, help="Don't save frames, only the animation", rich_help_panel="Output"
         ),
     ] = False,
     save_merged: Annotated[
         bool,
         typer.Option(
-            "--save-merged",
-            "-m",
-            is_flag=True,
-            help="Save a merged animation of all prompts",
-            rich_help_panel="Output",
+            "--save-merged", "-m", is_flag=True, help="Save a merged animation of all prompts", rich_help_panel="Output"
         ),
     ] = False,
     version: Annotated[
         Optional[bool],
-        typer.Option(
-            "--version",
-            "-v",
-            callback=version_callback,
-            is_eager=True,
-            is_flag=True,
-            help="Show version",
-        ),
+        typer.Option("--version", "-v", callback=version_callback, is_eager=True, is_flag=True, help="Show version"),
     ] = None,
 ):
     """
@@ -287,17 +233,16 @@ def generate(
     save_dir.mkdir(parents=True, exist_ok=True)
     logger.info(f"Will save outputs to ./{path_from_cwd(save_dir)}")
 
-    controlnet_image_map,controlnet_type_map = controlnet_preprocess(model_config.controlnet_map, width, height, length, save_dir, device)
+    controlnet_image_map, controlnet_type_map = controlnet_preprocess(
+        model_config.controlnet_map, width, height, length, save_dir, device
+    )
 
     # beware the pipeline
     global pipeline
     global last_model_path
     if pipeline is None or last_model_path != model_config.path.resolve():
         pipeline = create_pipeline(
-            base_model=base_model_path,
-            model_config=model_config,
-            infer_config=infer_config,
-            use_xformers=use_xformers,
+            base_model=base_model_path, model_config=model_config, infer_config=infer_config, use_xformers=use_xformers
         )
         last_model_path = model_config.path.resolve()
     else:
@@ -375,12 +320,16 @@ def generate(
                 context_overlap=overlap,
                 context_stride=stride,
                 clip_skip=model_config.clip_skip,
-                prompt_map={int(k):v for k,v in model_config.prompt_map.items() if int(k) < length},
-                image_map={int(k):v for k,v in model_config.image_map.items() if int(k) < length},
+                prompt_map={int(k): v for k, v in model_config.prompt_map.items() if int(k) < length},
                 controlnet_map=model_config.controlnet_map,
                 controlnet_image_map=controlnet_image_map,
                 controlnet_type_map=controlnet_type_map,
                 no_frames=no_frames,
+                image_prompt_map={
+                    int(k): v for k, v in model_config.ip_adapter_map["image_prompts"].items() if int(k) < length
+                },
+                ip_adapter_scale=model_config.ip_adapter_map["scale"],
+                ip_adapter_plus=model_config.ip_adapter_map["plus"],
             )
             outputs.append(output)
             torch.cuda.empty_cache()
@@ -399,11 +348,11 @@ def generate(
 
     return save_dir
 
+
 @cli.command()
 def tile_upscale(
     frames_dir: Annotated[
-        Path,
-        typer.Argument(path_type=Path, file_okay=False, exists=True, help="Path to source frames directory"),
+        Path, typer.Argument(path_type=Path, file_okay=False, exists=True, help="Path to source frames directory")
     ] = ...,
     model_name_or_path: Annotated[
         Path,
@@ -429,49 +378,27 @@ def tile_upscale(
     ] = None,
     width: Annotated[
         int,
-        typer.Option(
-            "--width",
-            "-W",
-            min=-1,
-            max=3840,
-            help="Width of generated frames",
-            rich_help_panel="Generation",
-        ),
+        typer.Option("--width", "-W", min=-1, max=3840, help="Width of generated frames", rich_help_panel="Generation"),
     ] = -1,
     height: Annotated[
         int,
         typer.Option(
-            "--height",
-            "-H",
-            min=-1,
-            max=2160,
-            help="Height of generated frames",
-            rich_help_panel="Generation",
+            "--height", "-H", min=-1, max=2160, help="Height of generated frames", rich_help_panel="Generation"
         ),
     ] = -1,
     device: Annotated[
-        str,
-        typer.Option(
-            "--device", "-d", help="Device to run on (cpu, cuda, cuda:id)", rich_help_panel="Advanced"
-        ),
+        str, typer.Option("--device", "-d", help="Device to run on (cpu, cuda, cuda:id)", rich_help_panel="Advanced")
     ] = "cuda",
     use_xformers: Annotated[
         bool,
         typer.Option(
-            "--xformers",
-            "-x",
-            is_flag=True,
-            help="Use XFormers instead of SDP Attention",
-            rich_help_panel="Advanced",
+            "--xformers", "-x", is_flag=True, help="Use XFormers instead of SDP Attention", rich_help_panel="Advanced"
         ),
     ] = False,
     force_half_vae: Annotated[
         bool,
         typer.Option(
-            "--half-vae",
-            is_flag=True,
-            help="Force VAE to use fp16 (not recommended)",
-            rich_help_panel="Advanced",
+            "--half-vae", is_flag=True, help="Force VAE to use fp16 (not recommended)", rich_help_panel="Advanced"
         ),
     ] = False,
     out_dir: Annotated[
@@ -484,15 +411,11 @@ def tile_upscale(
             help="Directory for output folders (frames, gifs, etc)",
             rich_help_panel="Output",
         ),
-    ] = Path("upscaled/"),
+    ] = Path("output/"),
     no_frames: Annotated[
         bool,
         typer.Option(
-            "--no-frames",
-            "-N",
-            is_flag=True,
-            help="Don't save frames, only the animation",
-            rich_help_panel="Output",
+            "--no-frames", "-N", is_flag=True, help="Don't save frames, only the animation", rich_help_panel="Output"
         ),
     ] = False,
 ):
@@ -524,7 +447,6 @@ def tile_upscale(
     save_dir.mkdir(parents=True, exist_ok=True)
     logger.info(f"Will save outputs to ./{path_from_cwd(save_dir)}")
 
-
     if "controlnet_tile" not in model_config.upscale_config:
         model_config.upscale_config["controlnet_tile"] = {
             "enable": True,
@@ -540,15 +462,34 @@ def tile_upscale(
     use_controlnet_ip2p = False
 
     if model_config.upscale_config:
-        use_controlnet_ref = model_config.upscale_config["controlnet_ref"]["enable"] if "controlnet_ref" in model_config.upscale_config else False
-        use_controlnet_tile = model_config.upscale_config["controlnet_tile"]["enable"] if "controlnet_tile" in model_config.upscale_config else False
-        use_controlnet_line_anime = model_config.upscale_config["controlnet_line_anime"]["enable"] if "controlnet_line_anime" in model_config.upscale_config else False
-        use_controlnet_ip2p = model_config.upscale_config["controlnet_ip2p"]["enable"] if "controlnet_ip2p" in model_config.upscale_config else False
+        use_controlnet_ref = (
+            model_config.upscale_config["controlnet_ref"]["enable"]
+            if "controlnet_ref" in model_config.upscale_config
+            else False
+        )
+        use_controlnet_tile = (
+            model_config.upscale_config["controlnet_tile"]["enable"]
+            if "controlnet_tile" in model_config.upscale_config
+            else False
+        )
+        use_controlnet_line_anime = (
+            model_config.upscale_config["controlnet_line_anime"]["enable"]
+            if "controlnet_line_anime" in model_config.upscale_config
+            else False
+        )
+        use_controlnet_ip2p = (
+            model_config.upscale_config["controlnet_ip2p"]["enable"]
+            if "controlnet_ip2p" in model_config.upscale_config
+            else False
+        )
 
     if use_controlnet_tile == False:
-        if use_controlnet_line_anime==False:
+        if use_controlnet_line_anime == False:
             if use_controlnet_ip2p == False:
-                raise ValueError(f"At least one of them should be enabled. {use_controlnet_tile=}, {use_controlnet_line_anime=}, {use_controlnet_ip2p=}")
+                raise ValueError(
+                    f"At least one of them should be enabled. {use_controlnet_tile=}, {use_controlnet_line_anime=},"
+                    f" {use_controlnet_ip2p=}"
+                )
 
     # beware the pipeline
     us_pipeline = create_us_pipeline(
@@ -561,7 +502,6 @@ def tile_upscale(
         use_controlnet_ip2p=use_controlnet_ip2p,
     )
 
-
     if us_pipeline.device == device:
         logger.info("Pipeline already on the correct device, skipping device transfer")
     else:
@@ -569,9 +509,7 @@ def tile_upscale(
             us_pipeline, device, freeze=True, force_half=force_half_vae, compile=model_config.compile
         )
 
-
-    model_config.result = { "original_frames": str(frames_dir) }
-
+    model_config.result = {"original_frames": str(frames_dir)}
 
     # save config to output directory
     logger.info("Saving prompt config to output directory")
@@ -586,7 +524,7 @@ def tile_upscale(
 
     gen_num = 0  # global generation index
 
-    org_images = sorted(glob.glob( os.path.join(frames_dir, "[0-9]*.png"), recursive=False))
+    org_images = sorted(glob.glob(os.path.join(frames_dir, "[0-9]*.png"), recursive=False))
     length = len(org_images)
 
     if model_config.prompt_map:
@@ -605,10 +543,9 @@ def tile_upscale(
         prompt_map = {}
         for k in model_config.prompt_map.keys():
             if int(k) < length:
-                prompt_map[int(k)]=model_config.prompt_map[k]
+                prompt_map[int(k)] = model_config.prompt_map[k]
 
         if model_config.upscale_config:
-
             upscaled_output = run_upscale(
                 org_imgs=org_images,
                 pipeline=us_pipeline,
@@ -643,50 +580,30 @@ def tile_upscale(
 
     return save_dir
 
+
 @cli.command()
 def civitai2config(
     lora_dir: Annotated[
-        Path,
-        typer.Argument(path_type=Path, file_okay=False, exists=True, help="Path to loras directory"),
+        Path, typer.Argument(path_type=Path, file_okay=False, exists=True, help="Path to loras directory")
     ] = ...,
     config_org: Annotated[
         Path,
         typer.Option(
-            "--config-org",
-            "-c",
-            path_type=Path,
-            dir_okay=False,
-            exists=True,
-            help="Path to original config file",
+            "--config-org", "-c", path_type=Path, dir_okay=False, exists=True, help="Path to original config file"
         ),
     ] = Path("config/prompts/prompt_travel.json"),
     out_dir: Annotated[
         Optional[Path],
-        typer.Option(
-            "--out-dir",
-            "-o",
-            path_type=Path,
-            file_okay=False,
-            help="Target directory for generated configs",
-        ),
+        typer.Option("--out-dir", "-o", path_type=Path, file_okay=False, help="Target directory for generated configs"),
     ] = Path("config/prompts/converted/"),
-    lora_weight: Annotated[
-        float,
-        typer.Option(
-            "--lora_weight",
-            "-l",
-            min=0.0,
-            max=3.0,
-            help="Lora weight",
-        ),
-    ] = 0.75,
+    lora_weight: Annotated[float, typer.Option("--lora_weight", "-l", min=0.0, max=3.0, help="Lora weight")] = 0.75,
 ):
     """Generate config file from *.civitai.info"""
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Generate config files from: {lora_dir}")
-    generate_config_from_civitai_info(lora_dir,config_org,out_dir, lora_weight)
+    generate_config_from_civitai_info(lora_dir, config_org, out_dir, lora_weight)
     logger.info(f"saved at: {out_dir.absolute()}")
 
 
@@ -695,23 +612,12 @@ def convert(
     checkpoint: Annotated[
         Path,
         typer.Option(
-            "--checkpoint",
-            "-i",
-            path_type=Path,
-            dir_okay=False,
-            exists=True,
-            help="Path to a model checkpoint file",
+            "--checkpoint", "-i", path_type=Path, dir_okay=False, exists=True, help="Path to a model checkpoint file"
         ),
     ] = ...,
     out_dir: Annotated[
         Optional[Path],
-        typer.Option(
-            "--out-dir",
-            "-o",
-            path_type=Path,
-            file_okay=False,
-            help="Target directory for converted model",
-        ),
+        typer.Option("--out-dir", "-o", path_type=Path, file_okay=False, help="Target directory for converted model"),
     ] = None,
 ):
     """Convert a StableDiffusion checkpoint into a Diffusers pipeline"""
@@ -725,23 +631,12 @@ def merge(
     checkpoint: Annotated[
         Path,
         typer.Option(
-            "--checkpoint",
-            "-i",
-            path_type=Path,
-            dir_okay=False,
-            exists=True,
-            help="Path to a model checkpoint file",
+            "--checkpoint", "-i", path_type=Path, dir_okay=False, exists=True, help="Path to a model checkpoint file"
         ),
     ] = ...,
     out_dir: Annotated[
         Optional[Path],
-        typer.Option(
-            "--out-dir",
-            "-o",
-            path_type=Path,
-            file_okay=False,
-            help="Target directory for converted model",
-        ),
+        typer.Option("--out-dir", "-o", path_type=Path, file_okay=False, help="Target directory for converted model"),
     ] = None,
 ):
     """Convert a StableDiffusion checkpoint into an AnimationPipeline"""

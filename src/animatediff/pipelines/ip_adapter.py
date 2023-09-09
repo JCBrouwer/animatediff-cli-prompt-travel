@@ -16,9 +16,7 @@ class AttnProcessor(torch.nn.Module):
     def __init__(self, hidden_size=None, cross_attention_dim=None):
         super().__init__()
         if not hasattr(F, "scaled_dot_product_attention"):
-            raise ImportError(
-                "AttnProcessor requires PyTorch 2.0, to use it, please upgrade PyTorch to 2.0."
-            )
+            raise ImportError("AttnProcessor requires PyTorch 2.0, to use it, please upgrade PyTorch to 2.0.")
 
     def __call__(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, temb=None):
         residual = hidden_states
@@ -106,9 +104,7 @@ class IPAttnProcessor(torch.nn.Module):
         super().__init__()
 
         if not hasattr(F, "scaled_dot_product_attention"):
-            raise ImportError(
-                "IPAttnProcessor requires PyTorch 2.0, to use it, please upgrade PyTorch to 2.0."
-            )
+            raise ImportError("IPAttnProcessor requires PyTorch 2.0, to use it, please upgrade PyTorch to 2.0.")
 
         self.hidden_size = hidden_size
         self.cross_attention_dim = cross_attention_dim
@@ -118,14 +114,7 @@ class IPAttnProcessor(torch.nn.Module):
         self.to_k_ip = nn.Linear(cross_attention_dim or hidden_size, hidden_size, bias=False)
         self.to_v_ip = nn.Linear(cross_attention_dim or hidden_size, hidden_size, bias=False)
 
-    def __call__(
-        self,
-        attn,
-        hidden_states,
-        encoder_hidden_states=None,
-        attention_mask=None,
-        temb=None,
-    ):
+    def __call__(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, temb=None):
         residual = hidden_states
 
         if attn.spatial_norm is not None:
@@ -243,8 +232,9 @@ class IPAdapter:
         sd_pipe,
         device,
         image_encoder_path="data/models/image_encoder/",
-        ip_ckpt="data/models/ip-adapter-plus_sd15.bin",
-        num_tokens=16,
+        ip_ckpt="data/models/ip-adapter_sd15.bin",
+        num_tokens=4,
+        scale=1.0,
     ):
         self.device = device
         self.image_encoder_path = image_encoder_path
@@ -264,6 +254,8 @@ class IPAdapter:
 
         self.load_ip_adapter()
 
+        self.set_scale(scale)
+
     def init_proj(self):
         image_proj_model = ImageProjModel(
             cross_attention_dim=self.pipe.unet.config.cross_attention_dim,
@@ -276,9 +268,7 @@ class IPAdapter:
         unet = self.pipe.unet
         attn_procs = {}
         for name in unet.attn_processors.keys():
-            cross_attention_dim = (
-                None if name.endswith("attn1.processor") else unet.config.cross_attention_dim
-            )
+            cross_attention_dim = None if name.endswith("attn1.processor") else unet.config.cross_attention_dim
             if name.startswith("mid_block"):
                 hidden_size = unet.config.block_out_channels[-1]
             elif name.startswith("up_blocks"):
@@ -381,10 +371,7 @@ class IPAdapter:
 def FeedForward(dim, mult=4):
     inner_dim = int(dim * mult)
     return nn.Sequential(
-        nn.LayerNorm(dim),
-        nn.Linear(dim, inner_dim, bias=False),
-        nn.GELU(),
-        nn.Linear(inner_dim, dim, bias=False),
+        nn.LayerNorm(dim), nn.Linear(dim, inner_dim, bias=False), nn.GELU(), nn.Linear(inner_dim, dim, bias=False)
     )
 
 
@@ -448,15 +435,7 @@ class PerceiverAttention(nn.Module):
 
 class Resampler(nn.Module):
     def __init__(
-        self,
-        dim=1024,
-        depth=8,
-        dim_head=64,
-        heads=16,
-        num_queries=8,
-        embedding_dim=768,
-        output_dim=1024,
-        ff_mult=4,
+        self, dim=1024, depth=8, dim_head=64, heads=16, num_queries=8, embedding_dim=768, output_dim=1024, ff_mult=4
     ):
         super().__init__()
 
@@ -471,10 +450,7 @@ class Resampler(nn.Module):
         for _ in range(depth):
             self.layers.append(
                 nn.ModuleList(
-                    [
-                        PerceiverAttention(dim=dim, dim_head=dim_head, heads=heads),
-                        FeedForward(dim=dim, mult=ff_mult),
-                    ]
+                    [PerceiverAttention(dim=dim, dim_head=dim_head, heads=heads), FeedForward(dim=dim, mult=ff_mult)]
                 )
             )
 

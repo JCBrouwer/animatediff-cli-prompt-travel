@@ -362,11 +362,7 @@ class CrossAttnDownBlock3D(nn.Module):
             self.downsamplers = nn.ModuleList(
                 [
                     Downsample3D(
-                        out_channels,
-                        use_conv=True,
-                        out_channels=out_channels,
-                        padding=downsample_padding,
-                        name="op",
+                        out_channels, use_conv=True, out_channels=out_channels, padding=downsample_padding, name="op"
                     )
                 ]
             )
@@ -398,13 +394,9 @@ class CrossAttnDownBlock3D(nn.Module):
 
                     return custom_forward
 
+                hidden_states = torch.utils.checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb)
                 hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(resnet), hidden_states, temb
-                )
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(attn, return_dict=False),
-                    hidden_states,
-                    encoder_hidden_states,
+                    create_custom_forward(attn, return_dict=False), hidden_states, encoder_hidden_states
                 )[0]
                 if motion_module is not None:
                     hidden_states = torch.utils.checkpoint.checkpoint(
@@ -499,11 +491,7 @@ class DownBlock3D(nn.Module):
             self.downsamplers = nn.ModuleList(
                 [
                     Downsample3D(
-                        out_channels,
-                        use_conv=True,
-                        out_channels=out_channels,
-                        padding=downsample_padding,
-                        name="op",
+                        out_channels, use_conv=True, out_channels=out_channels, padding=downsample_padding, name="op"
                     )
                 ]
             )
@@ -524,9 +512,7 @@ class DownBlock3D(nn.Module):
 
                     return custom_forward
 
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(resnet), hidden_states, temb
-                )
+                hidden_states = torch.utils.checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb)
                 if motion_module is not None:
                     hidden_states = torch.utils.checkpoint.checkpoint(
                         create_custom_forward(motion_module),
@@ -539,9 +525,7 @@ class DownBlock3D(nn.Module):
 
                 # add motion module
                 if motion_module:
-                    hidden_states = motion_module(
-                        hidden_states, temb, encoder_hidden_states=encoder_hidden_states
-                    )
+                    hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states)
 
             output_states = output_states + (hidden_states,)
 
@@ -641,9 +625,7 @@ class CrossAttnUpBlock3D(nn.Module):
         self.motion_modules = nn.ModuleList(motion_modules)
 
         if add_upsample:
-            self.upsamplers = nn.ModuleList(
-                [Upsample3D(out_channels, use_conv=True, out_channels=out_channels)]
-            )
+            self.upsamplers = nn.ModuleList([Upsample3D(out_channels, use_conv=True, out_channels=out_channels)])
         else:
             self.upsamplers = None
 
@@ -677,13 +659,9 @@ class CrossAttnUpBlock3D(nn.Module):
 
                     return custom_forward
 
+                hidden_states = torch.utils.checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb)
                 hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(resnet), hidden_states, temb
-                )
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(attn, return_dict=False),
-                    hidden_states,
-                    encoder_hidden_states,
+                    create_custom_forward(attn, return_dict=False), hidden_states, encoder_hidden_states
                 )[0]
                 if motion_module is not None:
                     hidden_states = torch.utils.checkpoint.checkpoint(
@@ -706,9 +684,7 @@ class CrossAttnUpBlock3D(nn.Module):
 
                 # add motion module
                 if motion_module:
-                    hidden_states = motion_module(
-                        hidden_states, temb, encoder_hidden_states=encoder_hidden_states
-                    )
+                    hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states)
 
         if self.upsamplers is not None:
             for upsampler in self.upsamplers:
@@ -773,21 +749,14 @@ class UpBlock3D(nn.Module):
         self.motion_modules = nn.ModuleList(motion_modules)
 
         if add_upsample:
-            self.upsamplers = nn.ModuleList(
-                [Upsample3D(out_channels, use_conv=True, out_channels=out_channels)]
-            )
+            self.upsamplers = nn.ModuleList([Upsample3D(out_channels, use_conv=True, out_channels=out_channels)])
         else:
             self.upsamplers = None
 
         self.gradient_checkpointing = False
 
     def forward(
-        self,
-        hidden_states,
-        res_hidden_states_tuple,
-        temb=None,
-        upsample_size=None,
-        encoder_hidden_states=None,
+        self, hidden_states, res_hidden_states_tuple, temb=None, upsample_size=None, encoder_hidden_states=None
     ):
         for resnet, motion_module in zip(self.resnets, self.motion_modules):
             # pop res hidden states
@@ -803,9 +772,7 @@ class UpBlock3D(nn.Module):
 
                     return custom_forward
 
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(resnet), hidden_states, temb
-                )
+                hidden_states = torch.utils.checkpoint.checkpoint(create_custom_forward(resnet), hidden_states, temb)
                 if motion_module is not None:
                     hidden_states = torch.utils.checkpoint.checkpoint(
                         create_custom_forward(motion_module),
@@ -816,9 +783,7 @@ class UpBlock3D(nn.Module):
             else:
                 hidden_states = resnet(hidden_states, temb)
                 if motion_module:
-                    hidden_states = motion_module(
-                        hidden_states, temb, encoder_hidden_states=encoder_hidden_states
-                    )
+                    hidden_states = motion_module(hidden_states, temb, encoder_hidden_states=encoder_hidden_states)
 
         if self.upsamplers is not None:
             for upsampler in self.upsamplers:

@@ -10,7 +10,4 @@ pipeline = StableDiffusionPipeline.from_pretrained(
     use_safetensors=True,
     kwargs=dict(safety_checker=None, requires_safety_checker=False),
 )
-pipeline.save_pretrained(
-    save_directory=str(out_dir),
-    safe_serialization=True,
-)
+pipeline.save_pretrained(save_directory=str(out_dir), safe_serialization=True)

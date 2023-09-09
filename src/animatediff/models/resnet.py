@@ -72,12 +72,7 @@ class Upsample3D(nn.Module):
 
 class Downsample3D(nn.Module):
     def __init__(
-        self,
-        channels: int,
-        use_conv: bool = False,
-        out_channels: Optional[int] = None,
-        padding: int = 1,
-        name="conv",
+        self, channels: int, use_conv: bool = False, out_channels: Optional[int] = None, padding: int = 1, name="conv"
     ):
         super().__init__()
         self.channels = channels
@@ -161,9 +156,7 @@ class ResnetBlock3D(nn.Module):
         elif non_linearity == "silu":
             self.nonlinearity = nn.SiLU()
 
-        self.use_in_shortcut = (
-            self.in_channels != self.out_channels if use_in_shortcut is None else use_in_shortcut
-        )
+        self.use_in_shortcut = self.in_channels != self.out_channels if use_in_shortcut is None else use_in_shortcut
 
         self.conv_shortcut = None
         if self.use_in_shortcut:

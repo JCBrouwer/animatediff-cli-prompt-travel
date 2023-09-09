@@ -57,17 +57,6 @@ def get_total_steps(
     closed_loop: bool = True,
 ):
     return sum(
-        len(
-            list(
-                scheduler(
-                    i,
-                    num_steps,
-                    num_frames,
-                    context_size,
-                    context_stride,
-                    context_overlap,
-                )
-            )
-        )
+        len(list(scheduler(i, num_steps, num_frames, context_size, context_stride, context_overlap)))
         for i in range(len(timesteps))
     )

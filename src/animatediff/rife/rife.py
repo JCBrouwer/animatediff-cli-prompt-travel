@@ -28,53 +28,35 @@ app: typer.Typer = typer.Typer(
 @app.command(no_args_is_help=True)
 def interpolate(
     rife_model: Annotated[
-        str,
-        typer.Option("--rife-model", "-m", help="RIFE model to use (subdirectory of data/rife/)"),
+        str, typer.Option("--rife-model", "-m", help="RIFE model to use (subdirectory of data/rife/)")
     ] = "rife-v4.6",
     in_fps: Annotated[
-        int,
-        typer.Option("--in-fps", "-I", help="Input frame FPS (8 for AnimateDiff)", show_default=True),
+        int, typer.Option("--in-fps", "-I", help="Input frame FPS (8 for AnimateDiff)", show_default=True)
     ] = 8,
     frame_multiplier: Annotated[
-        int,
-        typer.Option(
-            "--frame-multiplier", "-M", help="Multiply total frame count by this", show_default=True
-        ),
+        int, typer.Option("--frame-multiplier", "-M", help="Multiply total frame count by this", show_default=True)
     ] = 8,
-    out_fps: Annotated[
-        int,
-        typer.Option("--out-fps", "-F", help="Target FPS", show_default=True),
-    ] = 50,
+    out_fps: Annotated[int, typer.Option("--out-fps", "-F", help="Target FPS", show_default=True)] = 50,
     codec: Annotated[
-        VideoCodec,
-        typer.Option("--codec", "-c", help="Output video codec", show_default=True),
+        VideoCodec, typer.Option("--codec", "-c", help="Output video codec", show_default=True)
     ] = VideoCodec.webm,
     lossless: Annotated[
-        bool,
-        typer.Option("--lossless", "-L", is_flag=True, help="Use lossless encoding (WebP only)"),
+        bool, typer.Option("--lossless", "-L", is_flag=True, help="Use lossless encoding (WebP only)")
     ] = False,
     spatial_tta: Annotated[
-        bool,
-        typer.Option("--spatial-tta", "-x", is_flag=True, help="Enable RIFE Spatial TTA mode"),
+        bool, typer.Option("--spatial-tta", "-x", is_flag=True, help="Enable RIFE Spatial TTA mode")
     ] = False,
     temporal_tta: Annotated[
-        bool,
-        typer.Option("--temporal-tta", "-z", is_flag=True, help="Enable RIFE Temporal TTA mode"),
+        bool, typer.Option("--temporal-tta", "-z", is_flag=True, help="Enable RIFE Temporal TTA mode")
     ] = False,
-    uhd: Annotated[
-        bool,
-        typer.Option("--uhd", "-u", is_flag=True, help="Enable RIFE UHD mode"),
-    ] = False,
+    uhd: Annotated[bool, typer.Option("--uhd", "-u", is_flag=True, help="Enable RIFE UHD mode")] = False,
     frames_dir: Annotated[
-        Path,
-        typer.Argument(path_type=Path, file_okay=False, exists=True, help="Path to source frames directory"),
+        Path, typer.Argument(path_type=Path, file_okay=False, exists=True, help="Path to source frames directory")
     ] = ...,
     out_file: Annotated[
         Optional[Path],
         typer.Argument(
-            dir_okay=False,
-            help="Path to output file (default: frames_dir/rife-output.<out_type>)",
-            show_default=False,
+            dir_okay=False, help="Path to output file (default: frames_dir/rife-output.<out_type>)", show_default=False
         ),
     ] = None,
 ):
@@ -113,9 +95,7 @@ def interpolate(
 
     # actually run RIFE
     logger.info("Running RIFE, this may take a little while...")
-    with subprocess.Popen(
-        [rife_ncnn_vulkan, *rife_args], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    ) as proc:
+    with subprocess.Popen([rife_ncnn_vulkan, *rife_args], stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
         errs = []
         for line in proc.stderr:
             line = line.decode("utf-8").strip()

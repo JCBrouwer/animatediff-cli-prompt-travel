@@ -1,6 +1,6 @@
 {
-  "name": "ipadapter",
-  "path": "models/sd/v1-5-pruned-emaonly.safetensors",
+  "name": "ip_adapter",
+  "path": "models/sd/lyriel_v16.safetensors",
   "motion_module": "models/motion-module/mm_sd_v14.ckpt",
   "compile": false,
   "seed": [
@@ -8,16 +8,27 @@
   ],
   "scheduler": "k_dpmpp_sde",
   "steps": 40,
-  "guidance_scale": 20,
+  "guidance_scale": 10,
   "prompt_map": {
-    "0": ""
+    "0": "beautiful sci-fi futuristic calligraphy graffiti, digital cartoon illustration"
   },
   "n_prompt": [
     ""
   ],
-  "image_map": {
-    "0": "/home/hans/Pictures/verwarming/datasets/rhod/1024/30.jpg",
-    "16": "/home/hans/Pictures/verwarming/datasets/rhod/1024/43.jpg"
+  "ip_adapter_map": {
+    "scale": 0.1,
+    "plus": false,
+    "image_prompts": {
+      "0": "/home/hans/datasets/impromptu/green-soul-dark/daturahex.jpg",
+      "32": "/home/hans/datasets/impromptu/green-soul-dark/spice-garden.jpg",
+      "64": "/home/hans/datasets/impromptu/green-soul-dark/slime.jpg",
+      "96": "/home/hans/datasets/impromptu/green-soul-dark/monster.jpg",
+      "128": "/home/hans/datasets/impromptu/green-soul-dark/saga-alien.jpg",
+      "160": "/home/hans/datasets/impromptu/green-soul-dark/souls.jpg",
+      "192": "/home/hans/datasets/impromptu/green-soul-dark/everglades.jpg",
+      "224": "/home/hans/datasets/impromptu/green-soul-dark/environmental.jpg",
+      "256": "/home/hans/datasets/impromptu/green-soul-dark/jydn.jpg"
+    }
   },
   "lora_map": {},
   "controlnet_map": {
@@ -48,17 +59,6 @@
       "guess_mode": false,
       "control_guidance_start": 0.0,
       "control_guidance_end": 1.0
-    },
-    "controlnet_ref": {
-      "enable": true,
-      "use_frame_as_ref_image": false,
-      "use_1st_frame_as_ref_image": true,
-      "ref_image": "none",
-      "attention_auto_machine_weight": 1.0,
-      "gn_auto_machine_weight": 1.0,
-      "style_fidelity": 1.0,
-      "reference_attn": true,
-      "reference_adain": false
     }
   }
 }
